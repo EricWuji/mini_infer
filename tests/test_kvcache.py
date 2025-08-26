@@ -1,8 +1,14 @@
-from KVCache import KVCache
-from MiniLLM import create_model, MiniLLM
-from config import Configs, ModelConfig
 import torch
 import time
+import sys
+import os
+
+# 添加src目录到Python路径
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+from cache.kv_cache import KVCache
+from models.mini_llm import create_model, MiniLLM
+from config import Configs, ModelConfig
 
 def generate(model: MiniLLM, 
              input_ids: torch.Tensor, 

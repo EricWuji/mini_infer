@@ -1,152 +1,235 @@
-# MiniLLM with Configurable Context Length
+# MiniLLM - Lightweight LLM with Flash Attention & KV Cache
 
-This repository contains a configurable implementation of MiniLLM with KV Cache support. The system is designed to easily scale with hardware upgrades by simply changing configuration parameters.
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-1.9+-red.svg)](https://pytorch.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+A high-performance, lightweight implementation of a Large Language Model with integrated Flash Attention 2 and KV Cache for efficient inference.
+
+## ✨ Features
+
+- 🚀 **Flash Attention 2**: Memory-efficient attention computation with up to 99.6% memory savings
+- 💾 **KV Cache**: High-speed incremental inference for text generation (148+ tokens/s)
+- 🔧 **Modular Design**: Clean architecture with separated concerns
+- ⚡ **GPU Optimized**: CUDA support with automatic mixed precision
+- 📊 **Production Ready**: Comprehensive testing and benchmarking
+- 🔄 **Backward Compatible**: Easy migration from existing implementations
+
+## 📦 Installation
+
+### From Source
+```bash
+git clone https://github.com/EricWuji/mini_infer.git
+cd mini_infer
+pip install -e .
+```
+
+### Development Installation
+```bash
+git clone https://github.com/EricWuji/mini_infer.git
+cd mini_infer
+pip install -e ".[dev]"
+```
 
 ## 🚀 Quick Start
 
 ### Basic Usage
 ```python
-from config import Configs
-from MiniLLM import create_model
-from KVCache import KVCache
+from src import MiniLLM, KVCache, Configs
 
-# Create a small model (default)
+# Create model with default small configuration
 config = Configs.small()
-model = create_model(config)
+model = MiniLLM(config)
 
-# Create KV cache
-kv_cache = KVCache(config)
-```
+# Create KV Cache for efficient generation
+kv_cache = KVCache(config, batch_size=2)
 
-### Running Benchmarks
-
-#### Option 1: Use the benchmark script
-```bash
-# Test small configuration
-python run_benchmark.py --config small
-
-# Test medium configuration  
-python run_benchmark.py --config medium
-
-# Test with custom parameters
-python run_benchmark.py --config custom --max-seq-len 4096 --max-kv-cache-len 8192
-```
-
-#### Option 2: Run the test directly
-```bash
-python test_kvcache.py
-```
-
-## 📊 Available Configurations
-
-### Small (Default - Testing/Development)
-- Max sequence length: 1,024
-- Max KV cache length: 2,048
-- Model dimension: 512
-- Attention heads: 8
-- Memory usage: ~Low
-
-### Medium (Mid-range Hardware)
-- Max sequence length: 2,048
-- Max KV cache length: 4,096
-- Model dimension: 1,024
-- Attention heads: 16
-- Memory usage: ~Medium
-
-### Large (High-end Hardware)
-- Max sequence length: 4,096
-- Max KV cache length: 8,192
-- Model dimension: 2,048
-- Attention heads: 32
-- Memory usage: ~High
-
-### XLarge (Future Hardware Upgrades)
-- Max sequence length: 8,192
-- Max KV cache length: 16,384
-- Model dimension: 4,096
-- Attention heads: 64
-- Memory usage: ~Very High
-
-## 🔧 Customizing for Your Hardware
-
-### Method 1: Modify config.py
-Edit the configuration in `config.py`:
-```python
-# For your specific hardware requirements
-CUSTOM_CONFIG = ModelConfig(
-    max_seq_len=8192,        # Your desired context length
-    max_kv_cache_len=16384,  # 2x seq_len recommended
-    dim_model=2048,          # Adjust based on GPU memory
-    num_heads=32,            # Keep divisible by dim_model
-    vocab_size=50000,        # Your tokenizer vocab size
+# Forward pass with Flash Attention + KV Cache
+output = model(
+    input_ids,
+    kv_cache=kv_cache,
+    use_flash_attention=True,
+    flash_block_size=128
 )
 ```
 
-### Method 2: Create config programmatically
+### Text Generation
 ```python
-from config import ModelConfig
+from examples.demo_usage import TextGenerator
 
-# Create your custom configuration
-my_config = ModelConfig(
-    max_seq_len=16384,       # 16K context length
-    max_kv_cache_len=32768,  # 32K KV cache
-    dim_model=4096,
-    num_heads=64,
-    vocab_size=100000
+# Create generator
+generator = TextGenerator(use_flash_attention=True)
+
+# Generate text
+result = generator.generate(
+    prompt_ids=prompt_ids,
+    max_new_tokens=50,
+    temperature=0.8
 )
-
-model = create_model(my_config)
 ```
 
-## 💾 Memory Usage Guidelines
+## 📁 Project Structure
 
-| Configuration | GPU Memory (approx) | Context Length | Use Case |
-|---------------|-------------------|----------------|----------|
-| Small         | 2-4 GB           | 1K            | Development/Testing |
-| Medium        | 8-12 GB          | 2K            | Small-scale inference |
-| Large         | 16-24 GB         | 4K            | Production inference |
-| XLarge        | 32+ GB           | 8K+           | Future scaling |
+```
+mini_infer/
+├── src/                     # Source code
+│   ├── models/             # Model implementations
+│   │   └── mini_llm.py     # Main MiniLLM model
+│   ├── attention/          # Attention mechanisms
+│   │   ├── flash_attention.py  # Flash Attention 2 implementation
+│   │   └── tiled_attention.py  # Original tiled attention
+│   ├── cache/              # Caching systems
+│   │   └── kv_cache.py     # KV Cache implementation
+│   └── config.py           # Configuration classes
+├── tests/                  # Unit tests
+│   ├── test_integration.py # Integration tests
+│   └── test_kvcache.py     # KV Cache tests
+├── benchmarks/             # Performance benchmarks
+│   ├── performance_analysis.py
+│   └── benchmark_kv_cache.py
+├── examples/               # Usage examples
+│   ├── demo_usage.py       # Complete usage demo
+│   └── example_usage.py    # Basic examples
+├── docs/                   # Documentation
+│   ├── INTEGRATION_SUMMARY.md
+│   ├── FLASH_ATTENTION_FIXES.md
+│   └── KV_CACHE_OPTIMIZATION.md
+└── README.md               # This file
+```
 
-## 🔄 Upgrading for New Hardware
+## 🎯 Performance
 
-When you upgrade your hardware, simply:
+### Memory Optimization
+| Sequence Length | Standard Attention | Flash Attention | Memory Savings |
+|----------------|------------------|-----------------|----------------|
+| 256            | 4.00 MB          | 1.00 MB         | 75.0%          |
+| 512            | 16.00 MB         | 1.00 MB         | 93.8%          |
+| 1024           | 64.00 MB         | 1.00 MB         | 98.4%          |
+| 2048           | 256.00 MB        | 1.00 MB         | 99.6%          |
 
-1. **Update your configuration**:
-   ```python
-   # Change from small to large configuration
-   config = Configs.large()  # Instead of Configs.small()
-   ```
+### Generation Speed
+- **KV Cache Generation**: 148+ tokens/s
+- **Memory Usage**: 64MB KV Cache supports 2048-length sequences  
+- **Batch Processing**: Up to 16 concurrent sequences
 
-2. **Or create custom configuration**:
-   ```python
-   config = ModelConfig(
-       max_seq_len=32768,      # Your new context length
-       max_kv_cache_len=65536, # 2x recommended
-       # ... other parameters
-   )
-   ```
+## 🧪 Testing
 
-3. **Test the configuration**:
-   ```bash
-   python run_benchmark.py --config large
-   ```
+Run all tests:
+```bash
+# Basic integration test
+python tests/test_integration.py
 
-## 🎯 Key Features
+# Performance analysis
+python benchmarks/performance_analysis.py
 
-- **Centralized Configuration**: All model parameters in one place
-- **Backward Compatibility**: Legacy parameter support
-- **Automatic Validation**: Config validation prevents errors
-- **Memory Efficient**: KV Cache with vectorized operations
-- **Scalable**: Easy hardware upgrades
-- **Flexible**: Custom configurations supported
+# Usage examples
+python examples/demo_usage.py
+```
 
-## 📈 Performance Notes
+## 📊 Benchmarks
 
-- KV Cache provides 2-3x speedup for long sequences
-- Memory usage scales quadratically with context length
-- Attention computation is the main bottleneck for very long sequences
-- Batch size should be adjusted based on available GPU memory
+Compare different configurations:
+```bash
+cd benchmarks
+python performance_analysis.py
+```
+
+This will test:
+- Flash Attention vs Standard Attention
+- Different block sizes optimization
+- KV Cache vs non-cached inference
+- Memory usage analysis
+
+## ⚙️ Configuration
+
+### Model Configurations
+```python
+from src.config import Configs
+
+# Predefined configurations
+small_config = Configs.small()    # 512 dim, 8 heads
+medium_config = Configs.medium()  # 1024 dim, 16 heads  
+large_config = Configs.large()    # 2048 dim, 32 heads
+
+# Custom configuration
+from src.config import ModelConfig
+
+custom_config = ModelConfig(
+    dim_model=1024,
+    num_heads=16,
+    num_layers=12,
+    max_seq_len=2048,
+    vocab_size=50000
+)
+```
+
+### Flash Attention Block Size Optimization
+- **Short sequences (<256)**: Use block size 64-128
+- **Long sequences (>256)**: Use block size 128-256
+- **Optimal**: Block size 256 performs best in most cases
+
+## 🔧 Advanced Usage
+
+### Custom Attention Mechanisms
+```python
+from src.attention.flash_attention import flash_attention_with_kv_cache
+
+# Direct flash attention call
+output = flash_attention_with_kv_cache(
+    q=query_tensor,
+    k=key_tensor, 
+    v=value_tensor,
+    causal_mask=mask,
+    block_size=128
+)
+```
+
+### KV Cache Management
+```python
+from src.cache.kv_cache import KVCache
+
+# Create cache
+cache = KVCache(config, batch_size=4)
+
+# Reset specific batches
+cache.reset(batch_indices=[0, 2])
+
+# Get sequence length
+seq_len = cache.get_seq_len(batch_idx=0)
+```
+
+## 📖 Documentation
+
+- [Integration Summary](docs/INTEGRATION_SUMMARY.md) - Complete integration overview
+- [Flash Attention Details](docs/FLASH_ATTENTION_FIXES.md) - Technical implementation details
+- [KV Cache Optimization](docs/KV_CACHE_OPTIMIZATION.md) - Cache system design
 
 ## 🤝 Contributing
 
-Feel free to add new predefined configurations or optimize the implementation for different hardware setups!
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Flash Attention implementation inspired by the original paper by Tri Dao et al.
+- KV Cache design follows Hugging Face Transformers conventions
+- Project structure follows modern Python packaging standards
+
+## 📞 Support
+
+If you encounter any issues or have questions:
+
+1. Check the [documentation](docs/)
+2. Run the test suite to verify your setup
+3. Open an issue on GitHub with detailed information
+
+---
+
+**Made with ❤️ by EricWuji**

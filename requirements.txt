@@ -1,0 +1,12 @@
+# Core dependencies
+torch>=1.9.0
+numpy>=1.21.0
+
+# Optional dependencies for development
+pytest>=6.0
+black>=21.0
+flake8>=3.9
+
+# Optional dependencies for benchmarks  
+matplotlib>=3.3.0
+seaborn>=0.11.0
