@@ -4,7 +4,7 @@ from typing import Tuple, Optional, TYPE_CHECKING
 import math
 
 if TYPE_CHECKING:
-    from KVCache import KVCache
+    from cache.kv_cache import KVCache
 
 
 def flash_attention_with_kv_cache(

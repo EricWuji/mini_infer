@@ -1,6 +1,6 @@
 import torch
 from typing import Tuple, Dict, List, Optional
-from config import ModelConfig
+from ..config import ModelConfig
 
 class KVCache:
     def __init__(self, config: ModelConfig, batch_size: Optional[int] = None):
@@ -41,7 +41,7 @@ class KVCache:
         """
         Create KVCache from legacy parameters for backward compatibility
         """
-        from config import ModelConfig
+        from ..config import ModelConfig
         config = ModelConfig(
             dim_model=num_heads * head_dim,
             num_heads=num_heads,

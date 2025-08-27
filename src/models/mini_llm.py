@@ -2,9 +2,9 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from typing import Optional
-from cache.kv_cache import KVCache
-from config import ModelConfig, DEFAULT_CONFIG
-from attention.flash_attention import multi_head_flash_attention
+from ..cache.kv_cache import KVCache
+from ..config import ModelConfig, DEFAULT_CONFIG
+from ..attention.flash_attention import multi_head_flash_attention
 
 class MiniLLM(nn.Module):
     def __init__(self, config: ModelConfig = None):
