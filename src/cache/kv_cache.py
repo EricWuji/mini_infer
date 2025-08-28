@@ -1,6 +1,6 @@
 import torch
 from typing import Tuple, Dict, List, Optional
-from ..config import ModelConfig
+from config import ModelConfig
 
 class KVCache:
     def __init__(self, config: ModelConfig, batch_size: Optional[int] = None):

@@ -2,7 +2,7 @@ import torch
 from typing import List, Dict, Optional, Any, Tuple
 from dataclasses import dataclass
 from .kv_cache import KVCache
-from ..config import ModelConfig
+from config import ModelConfig
 
 @dataclass
 class Block:

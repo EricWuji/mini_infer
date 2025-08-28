@@ -2,9 +2,17 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from typing import Optional
-from ..cache.kv_cache import KVCache
-from ..config import ModelConfig, DEFAULT_CONFIG
-from ..attention.flash_attention import multi_head_flash_attention
+import sys
+import os
+
+# 添加项目根目录到路径
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
+
+from cache.kv_cache import KVCache
+from config import ModelConfig, DEFAULT_CONFIG
+from attention.flash_integration import flash_attention_with_kv_cache
 
 class MiniLLM(nn.Module):
     def __init__(self, config: ModelConfig = None):
@@ -98,21 +106,21 @@ class MiniLLM(nn.Module):
             residual = x
             
             if use_flash_attention:
-                # 使用Flash Attention
+                # 使用Triton Flash Attention 2 + KV Cache
                 if kv_cache is not None:
                     # 计算cache position
                     cache_position = torch.arange(start_pos, start_pos + seq_len, device=device)
                 else:
                     cache_position = None
                 
-                # 应用Flash Attention
-                attn_output = multi_head_flash_attention(
+                # 应用Flash Attention with KV Cache
+                attn_output = flash_attention_with_kv_cache(
                     x=x,
                     attn_layer=layer.self_attn,
                     kv_cache=kv_cache,
                     layer_idx=layer_idx,
                     cache_position=cache_position,
-                    block_size=flash_block_size
+                    causal=True  # 始终使用因果掩码
                 )
             else:
                 # 使用原始的手动attention实现（保留兼容性）
