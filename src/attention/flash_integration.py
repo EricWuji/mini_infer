@@ -76,19 +76,43 @@ def flash_attention_with_kv_cache(
             cache_position=cache_position
         )
         
-        # 使用缓存的完整K,V进行Flash Attention计算
-        # 注意：这里只计算新的query tokens对所有cached key/value的attention
-        q_for_flash = q  # [batch_size, num_heads, seq_len, head_dim] - 只有新的tokens
-        k_for_flash = k_cached  # [batch_size, num_heads, total_seq_len, head_dim] - 包括缓存的
-        v_for_flash = v_cached  # [batch_size, num_heads, total_seq_len, head_dim] - 包括缓存的
+        # 对于KV cache场景，当前query长度和cached kv长度不匹配
+        # Flash Attention 2的causal masking可能无法正确处理这种情况
+        # 因此在这种场景下我们回退到标准attention
         
-        # 调用Flash Attention 2 kernel
-        attn_output, _, _ = flash_attention_2(
-            q=q_for_flash,
-            k=k_for_flash, 
-            v=v_for_flash,
-            causal=causal
-        )
+        cached_seq_len = k_cached.size(2)  # [batch, heads, seq_len, head_dim]
+        query_seq_len = q.size(2)
+        
+        if query_seq_len != cached_seq_len:
+            # 使用标准attention计算，正确处理causal mask
+            scale = 1.0 / (head_dim ** 0.5)
+            scores = torch.matmul(q, k_cached.transpose(-2, -1)) * scale
+            
+            # 创建正确的causal mask
+            # query tokens的位置是 [cached_seq_len - query_seq_len : cached_seq_len]
+            causal_mask = torch.tril(torch.ones(query_seq_len, cached_seq_len, 
+                                               device=q.device, dtype=torch.bool))
+            
+            # 只有当query position >= key position时才能attend
+            query_positions = torch.arange(cached_seq_len - query_seq_len, cached_seq_len, 
+                                         device=q.device)[:, None]
+            key_positions = torch.arange(cached_seq_len, device=q.device)[None, :]
+            causal_mask = query_positions >= key_positions
+            
+            # Apply causal mask
+            scores = scores.masked_fill(~causal_mask, float('-inf'))
+            
+            # Softmax and apply to values
+            attn_weights = torch.softmax(scores, dim=-1)
+            attn_output = torch.matmul(attn_weights, v_cached)
+        else:
+            # 相同长度时可以使用Flash Attention
+            attn_output, _, _ = flash_attention_2(
+                q=q,
+                k=k_cached, 
+                v=v_cached,
+                causal=causal
+            )
     else:
         # 没有KV Cache时，直接使用Flash Attention
         attn_output, _, _ = flash_attention_2(

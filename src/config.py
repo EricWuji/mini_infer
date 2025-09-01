@@ -22,6 +22,12 @@ class ModelConfig:
     max_seq_len: int = 1024  # Maximum sequence length for the model
     max_kv_cache_len: int = 2048  # Maximum KV cache length (can be larger than max_seq_len)
     
+    # Chunked prefill settings
+    chunk_size: int = 512  # Default chunk size for chunked prefill
+    enable_chunked_prefill: bool = True  # Enable chunked prefill by default
+    min_chunk_size: int = 64  # Minimum chunk size
+    max_chunk_size: int = 2048  # Maximum chunk size
+    
     # Training/inference settings
     dropout: float = 0.1
     dtype: torch.dtype = torch.float16
@@ -29,6 +35,10 @@ class ModelConfig:
     
     # Batch settings
     max_batch_size: int = 32
+    
+    # Performance optimization settings
+    use_flash_attention: bool = True  # Use Flash Attention 2 by default
+    memory_efficient: bool = True  # Enable memory optimizations
     
     @property
     def head_dim(self) -> int:
@@ -43,6 +53,12 @@ class ModelConfig:
         assert self.max_seq_len > 0, "max_seq_len must be positive"
         assert self.vocab_size > 0, "vocab_size must be positive"
         assert self.num_heads > 0, "num_heads must be positive"
+        
+        # Chunked prefill validations
+        assert self.chunk_size > 0, "chunk_size must be positive"
+        assert self.min_chunk_size <= self.chunk_size <= self.max_chunk_size, \
+            f"chunk_size ({self.chunk_size}) must be between min_chunk_size ({self.min_chunk_size}) and max_chunk_size ({self.max_chunk_size})"
+        assert self.chunk_size <= self.max_seq_len, "chunk_size should not exceed max_seq_len"
 
 
 # Predefined configurations for different scales
